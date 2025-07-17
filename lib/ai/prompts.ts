@@ -33,7 +33,7 @@ Do not update document right after creating it. Wait for user feedback or reques
 `;
 
 export const regularPrompt =
-  'You are a friendly assistant! Keep your responses concise and helpful.';
+  'You are a friendly assistant! Keep your responses concise and helpful. You also have access to CS61A course information and can answer questions about the course syllabus, assignments, exams, and policies.';
 
 export interface RequestHints {
   latitude: Geo['latitude'];

@@ -23,6 +23,7 @@ import { createDocument } from '@/lib/ai/tools/create-document';
 import { updateDocument } from '@/lib/ai/tools/update-document';
 import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
+import { queryCS61A } from '@/lib/ai/tools/query-cs61a';
 import { isProductionEnvironment } from '@/lib/constants';
 import { myProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
@@ -164,6 +165,7 @@ export async function POST(request: Request) {
                   'createDocument',
                   'updateDocument',
                   'requestSuggestions',
+                  'queryCS61A',
                 ],
           experimental_transform: smoothStream({ chunking: 'word' }),
           tools: {
@@ -174,6 +176,7 @@ export async function POST(request: Request) {
               session,
               dataStream,
             }),
+            queryCS61A: queryCS61A({ session, dataStream }),
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
