@@ -1,4 +1,5 @@
 import { pipeline, env } from '@xenova/transformers';
+import { pineconeIndex } from './pinecone';
 import { generateUUID } from '../utils';
 
 // 配置 transformers.js 环境
@@ -27,8 +28,6 @@ export interface RAGResult {
 export class RAGService {
   private static instance: RAGService;
   private embedder: any;
-  private syllabusChunks: SyllabusChunk[] = [];
-  private embeddings: number[][] = [];
   private isInitialized = false;
 
   private constructor() {}
@@ -58,7 +57,7 @@ export class RAGService {
   }
 
   /**
-   * 生成文本嵌入
+   * 生成文本嵌入（本地模型，384维）
    */
   async generateEmbedding(text: string): Promise<number[]> {
     if (!this.isInitialized) {
@@ -85,54 +84,44 @@ export class RAGService {
   }
 
   /**
-   * 添加 syllabus 内容
+   * 添加 syllabus 内容到 Pinecone
    */
   async addSyllabusContent(chunks: SyllabusChunk[]) {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
+    await this.initialize();
     console.log(`Adding ${chunks.length} syllabus chunks...`);
-
+    const vectors = [];
     for (const chunk of chunks) {
       const embedding = await this.generateEmbedding(chunk.content);
-      this.syllabusChunks.push(chunk);
-      this.embeddings.push(embedding);
+      vectors.push({
+        id: chunk.id,
+        values: embedding,
+        metadata: { ...chunk.metadata, content: chunk.content },
+      });
     }
-
-    console.log(`Successfully added ${chunks.length} chunks to RAG system`);
+    await pineconeIndex.upsert(vectors);
+    console.log(`Successfully added ${chunks.length} chunks to Pinecone`);
   }
 
   /**
-   * 检索相关文档块
+   * 检索相关文档块（Pinecone）
    */
   async retrieveChunks(query: string, topK: number = 3): Promise<SyllabusChunk[]> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
-    if (this.syllabusChunks.length === 0) {
-      return [];
-    }
-
+    await this.initialize();
     try {
       const queryEmbedding = await this.generateEmbedding(query);
-      
-      // 计算相似度
-      const similarities = this.embeddings.map((embedding, index) => ({
-        index,
-        similarity: this.cosineSimilarity(queryEmbedding, embedding),
-      }));
-
-      // 排序并返回 top-k 结果
-      similarities.sort((a, b) => b.similarity - a.similarity);
-      
-      return similarities.slice(0, topK).map(item => ({
-        ...this.syllabusChunks[item.index],
-        similarity: item.similarity,
+      const result = await pineconeIndex.query({
+        vector: queryEmbedding,
+        topK,
+        includeMetadata: true,
+      });
+      return result.matches.map((match: any) => ({
+        id: match.id,
+        content: match.metadata.content,
+        metadata: match.metadata,
+        similarity: match.score,
       }));
     } catch (error) {
-      console.error('Failed to retrieve chunks:', error);
+      console.error('Failed to retrieve chunks from Pinecone:', error);
       return [];
     }
   }
@@ -248,8 +237,8 @@ ${context}
   getStatus() {
     return {
       isInitialized: this.isInitialized,
-      chunkCount: this.syllabusChunks.length,
-      hasEmbeddings: this.embeddings.length > 0,
+      // chunkCount: this.syllabusChunks.length, // 移除本地内存计数
+      hasEmbeddings: true, // 改为 Pinecone 查询
     };
   }
 }
