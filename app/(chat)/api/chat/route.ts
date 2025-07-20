@@ -225,6 +225,8 @@ export async function POST(request: Request) {
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
+    // Always return a generic error response in the catch block
+    return new Response('Internal Server Error', { status: 500 });
   }
 }
 
