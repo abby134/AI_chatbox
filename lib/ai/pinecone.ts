@@ -7,8 +7,16 @@ console.log('Pinecone config:', {
   environment: process.env.PINECONE_ENVIRONMENT || 'NOT SET'
 });
 
-const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY!,
-});
+const apiKey = process.env.PINECONE_API_KEY;
+const indexName = process.env.PINECONE_INDEX;
 
-export const pineconeIndex = pinecone.index(process.env.PINECONE_INDEX!); 
+if (!apiKey) {
+  throw new Error('PINECONE_API_KEY is not set in environment variables');
+}
+if (!indexName) {
+  throw new Error('PINECONE_INDEX is not set in environment variables');
+}
+
+const pinecone = new Pinecone({ apiKey });
+
+export const pineconeIndex = pinecone.index(indexName); 
