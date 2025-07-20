@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     // 检查 RAG 系统是否已初始化
     const status = ragService.getStatus();
     
-    if (!status.isInitialized || status.chunkCount === 0) {
+    if (!status.isInitialized) {
       // 如果未初始化，先初始化
       console.log('RAG system not initialized, initializing now...');
       await cs61aDataService.initializeRAG();
